@@ -115,14 +115,18 @@ Value* ASTCall::codeGen(JIT* jit) {
 }
 
 Value* ASTVar::codeGen(JIT* jit) {
-	return jit->symbols[ident];
+	Value* val = jit->symbols[ident];
+	if (!val) {
+		ASTNumber zero(0.0);
+		return zero.codeGen(jit);
+	}
+	return val;
 }
 
 Value* ASTNumber::codeGen(JIT* jit) {
 	ConstantFP* val = ConstantFP::get(jit->mod->getContext(),
 		APFloat(num));
 	vector<Constant*> vec(4, val);
-	// return ConstantVector::get(jit->float_vec_const, vec);
 	return ConstantVector::get(ArrayRef<Constant*>(vec));
 }
 
@@ -142,17 +146,18 @@ JIT::JIT() {
 	float_vec_const  = VectorType::get(float_pod, 4);
 	float_vec = PointerType::get(float_vec_const, 0);
 	void_ret = Type::getVoidTy(mod->getContext());
+	result_type = PointerType::get(
+		IntegerType::get(mod->getContext(), 8), 0);
 
 	storeu = mod->getFunction("llvm.x86.sse.storeu.ps");
 	if (!storeu) {
-		/* Is storeu available as an intrinsic? */
-		cerr << "sse.storeu.ps not available in the Module.\n";
-
+		VectorType* VectorTy_5 = VectorType::get(
+			Type::getFloatTy(mod->getContext()), 4);
 		PointerType* PointerTy_6 = PointerType::get(
 			IntegerType::get(mod->getContext(), 8), 0);
 		std::vector<Type*>FuncTy_8_args;
 		FuncTy_8_args.push_back(PointerTy_6);
-		FuncTy_8_args.push_back(float_vec_const);
+		FuncTy_8_args.push_back(VectorTy_5);
 		FunctionType* FuncTy_8 = FunctionType::get(
 			/*Result=*/Type::getVoidTy(mod->getContext()),
 			/*Params=*/FuncTy_8_args,
@@ -163,7 +168,6 @@ JIT::JIT() {
 			/*Name=*/"llvm.x86.sse.storeu.ps", mod); 
 		storeu->setCallingConv(CallingConv::C);
 	}
-
 
 	optimizer = new FunctionPassManager(mod);
 	optimizer->add(new TargetData(*jit->getTargetData()));
@@ -194,8 +198,8 @@ void* JIT::compile(ASTCall* fcall, vector<string> params) {
 	}
 
 	/* Construct function prototype. */
-	params.push_back("result");
 	vector<Type*> proto(params.size(), float_ptr);
+	proto.push_back(result_type);
 	FunctionType* ftype = FunctionType::get(void_ret,
 		ArrayRef<Type*>(proto), false);
 	Function* fn = Function::Create(ftype,
@@ -206,9 +210,9 @@ void* JIT::compile(ASTCall* fcall, vector<string> params) {
 		fcall->name, fn);
 	builder = new IRBuilder<>(blk);
 
-	/* Vectorize the function arguments, except the result. */
+	/* Vectorize the function arguments. */ 
 	Function::arg_iterator param = fn->arg_begin();
-	for (unsigned i=0; i < params.size() - 1; ++i, ++param) {
+	for (unsigned i=0; i < params.size(); ++i, ++param) {
 		string name = params[i];
 		Value* argptr = param;
 		Value* argvec = builder->CreateBitCast(argptr, float_vec, "");
@@ -216,14 +220,10 @@ void* JIT::compile(ASTCall* fcall, vector<string> params) {
 		symbols[name] = load;
 	}
 
-	/* Just cast the result pointer to a vector, don't load it. */
-	Value* result_float = param;
-	Value* result_vector = builder->CreateBitCast(result_float,
-		float_vec, "result");
-
 	/* Store into the result vector. */
+	Value* result_float = param;
 	Value* body = fcall->codeGen(this);
-	builder->CreateCall2(storeu, result_vector, body, "storeu");
+	builder->CreateCall2(storeu, result_float, body, "");
 	ReturnInst::Create(mod->getContext(), blk);
 
 	verifyFunction(*fn);

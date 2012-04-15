@@ -65,7 +65,6 @@ public:
 };
 
 struct JIT;
-typedef map<string, float> environment;
 
 struct ASTNode {
 	virtual ~ASTNode() {};
@@ -125,6 +124,7 @@ struct JIT {
 	Type* float_vec;
 	Type* float_vec_const;
 	Type* void_ret;
+	PointerType* result_type;
 	Function* storeu;
 	FunctionPassManager* optimizer;
 	ExecutionEngine* jit;

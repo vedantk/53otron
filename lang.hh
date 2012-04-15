@@ -8,6 +8,7 @@
 #include <set>
 #include <list>
 #include <string>
+#include <typeinfo>
 #include <cstdlib>
 
 #include <iostream>
@@ -71,6 +72,18 @@ struct ASTNode {
 	virtual Value* codeGen(JIT* jit) = 0;
 };
 
+struct ASTDef : public ASTNode {
+	string name;
+	vector<string> params;
+	ASTNode* body;
+
+	ASTDef(string _name)
+		: name(_name)
+	{}
+
+	virtual Value* codeGen(JIT* jit);
+};
+
 struct ASTCall : public ASTNode {
 	string name;
 	list<ASTNode*> args;
@@ -118,6 +131,7 @@ public:
 struct JIT {
 	Module* mod;
 	IRBuilder<>* builder;
+	bool inject_result;
 	map<string, Value*> symbols;
 	Type* float_pod;
 	Type* float_ptr;
@@ -132,5 +146,5 @@ struct JIT {
 
 	JIT();
 	~JIT();
-	void* compile(ASTCall* fcall, vector<string> params);
+	void* compile(string expr);
 };

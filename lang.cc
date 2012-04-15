@@ -71,6 +71,7 @@ ASTNode* Parser::parse() {
 			probe = _lex.getToken();
 			if (probe != TOK_OPEN) return NULL;
 			ASTDef* defn = new ASTDef(def_name);
+
 			while ((probe = _lex.getToken()) && probe == TOK_IDENT)
 			{
 				string var = _lex.getTokenString();
@@ -80,6 +81,7 @@ ASTNode* Parser::parse() {
 				}
 				defn->params.push_back(var);
 			}
+
 			if (probe != TOK_CLOSE) {
 				delete defn;
 				return NULL;
@@ -89,8 +91,10 @@ ASTNode* Parser::parse() {
 				delete defn;
 				return NULL;
 			}
+
 			return defn;
 		} else {
+			/* (<ident> ...) */
 			ASTCall* fcall = new ASTCall(cur_ident);
 			while ((probe = _lex.getToken()) && probe != TOK_CLOSE)
 			{
@@ -103,31 +107,61 @@ ASTNode* Parser::parse() {
 	return NULL;
 }
 
-Value* ASTDef::codeGen(JIT* jit) {
-	/* Make sure arguments are unique. */
+bool ASTDef::validateArgs() {
+	/* Make sure the arguments are unique. */
 	set<string> sset;
 	for (unsigned i=0; i < params.size(); ++i) {
 		if (sset.count(params[i]) || params[i] == "result") {
-			return NULL;
+			return false;
 		}
 		sset.insert(params[i]);
 	}
+	return true;
+}
 
-	/* Construct function prototype. */
-	Type* param_type = jit->inject_result ?
-		jit->float_ptr : jit->float_vec_const;
-	vector<Type*> proto(params.size(), param_type);
-	if (jit->inject_result) {
-		proto.push_back(jit->result_type);
+Value* ASTDef::codeGen(JIT* jit) {
+	if (!validateArgs()) {
+		return NULL;
 	}
-	Type* return_type = jit->inject_result ?
-		jit->void_ret : jit->float_vec_const;
-	FunctionType* ftype = FunctionType::get(return_type,
+
+	/* (Vec4<float>, ...) => Vec4<float> */
+	vector<Type*> proto(params.size(), jit->float_vec_const);
+	FunctionType* ftype = FunctionType::get(jit->float_vec_const,
 		ArrayRef<Type*>(proto), false);
 	Function* fn = Function::Create(ftype,
 		Function::ExternalLinkage, name, jit->mod);
 
-	/* Start assembling the function. */
+	/* Fill up the global symbol table. */
+	BasicBlock* blk = BasicBlock::Create(jit->mod->getContext(),
+		name, fn);
+	jit->builder = new IRBuilder<>(blk);
+	Function::arg_iterator param = fn->arg_begin();
+	for (unsigned i=0; i < params.size(); ++i, ++param) {
+		string argname = params[i];
+		jit->symbols[argname] = param;
+	}
+
+	Value* child_node = body->codeGen(jit);
+	if (!child_node) return NULL;
+	jit->builder->CreateRet(child_node);
+	verifyFunction(*fn);
+	jit->optimizer->run(*fn);
+	return fn;
+}
+
+Value* ASTForeignDef::codeGen(JIT* jit) {
+	if (!validateArgs()) {
+		return NULL;
+	}
+
+	/* (float*, ..., i8*) => void */
+	vector<Type*> proto(params.size(), jit->float_ptr);
+	proto.push_back(jit->result_type);
+	FunctionType* ftype = FunctionType::get(jit->void_ret,
+		ArrayRef<Type*>(proto), false);
+	Function* fn = Function::Create(ftype,
+		Function::ExternalLinkage, name, jit->mod);
+
 	BasicBlock* blk = BasicBlock::Create(jit->mod->getContext(),
 		name, fn);
 	jit->builder = new IRBuilder<>(blk);
@@ -137,29 +171,24 @@ Value* ASTDef::codeGen(JIT* jit) {
 	for (unsigned i=0; i < params.size(); ++i, ++param) {
 		string argname = params[i];
 		Value* argptr = param;
-		if (jit->inject_result) {
-			Value* argvec = jit->builder->CreateBitCast(argptr,
-				jit->float_vec, "");
-			argptr = jit->builder->CreateLoad(argvec, 
-				false, argname);
-		}
+		Value* argvec = jit->builder->CreateBitCast(argptr,
+			jit->float_vec, "");
+		argptr = jit->builder->CreateLoad(argvec, 
+			false, argname);
 		jit->symbols[argname] = argptr;
 	}
 
-	/* Store into the result vector and return. */
+	/* Inject the result vector into the i8 address provided. */
 	Value* child_node = body->codeGen(jit);
 	if (!child_node) return NULL;
-	if (jit->inject_result) {
-		Value* result_float = param;
-		jit->builder->CreateCall2(jit->storeu,
-			result_float, child_node, "");
-		jit->builder->CreateRetVoid();
-	} else {
-		jit->builder->CreateRet(child_node);
-	}
+	Value* result_float = param;
+	jit->builder->CreateCall2(jit->storeu,
+		result_float, child_node, "");
+	jit->builder->CreateRetVoid();
 	verifyFunction(*fn);
 	jit->optimizer->run(*fn);
 	return fn;
+
 }
 
 ASTCall::~ASTCall() {
@@ -172,10 +201,6 @@ ASTCall::~ASTCall() {
 }
 
 Value* ASTCall::codeGen(JIT* jit) {
-	if (args.size() == 0) {
-		return NULL;
-	}
-
 	vector<Value*> vals;
 	list<ASTNode*>::iterator it = args.begin();
 	for (; it != args.end(); ++it) {
@@ -206,21 +231,21 @@ Value* ASTCall::codeGen(JIT* jit) {
 
 	#undef FUNC
 
-	#define SPECIAL_FUNC1(_name, _jvar) \
+	#define SPECIAL_FUNC(_name, _jvar) \
 	if (name == _name) { \
 		return jit->builder->CreateCall(_jvar, \
 			vals[0], ""); \
 	} \
 
 	if (args.size() == 1) {
-		SPECIAL_FUNC1("sqrt", jit->vsqrt);
-		SPECIAL_FUNC1("sin", jit->vsin);
-		SPECIAL_FUNC1("cos", jit->vcos);
-		SPECIAL_FUNC1("exp", jit->vexp);
-		SPECIAL_FUNC1("log", jit->vlog);
+		SPECIAL_FUNC("sqrt", jit->vsqrt);
+		SPECIAL_FUNC("sin", jit->vsin);
+		SPECIAL_FUNC("cos", jit->vcos);
+		SPECIAL_FUNC("exp", jit->vexp);
+		SPECIAL_FUNC("log", jit->vlog);
 	}
 
-	#undef SPECIAL_FUNC1
+	#undef SPECIAL_FUNC
 
 	if (name == "pow" && args.size() == 2) {
 		return jit->builder->CreateCall2(jit->vpow,
@@ -334,19 +359,21 @@ JIT::~JIT() {
 void* JIT::compile(string expr) {
 	Lexer lex(expr);
 	ASTNode* ast = Parser(lex).parse();
-	ASTDef* top_defn = dynamic_cast<ASTDef*>(ast);
-
-	if (top_defn && typeid(top_defn) == typeid(ASTDef*)) {
-		inject_result = false;
-		ast->codeGen(this);
-		delete ast;
+	ASTDef* toplevel = dynamic_cast<ASTDef*>(ast);
+	if (toplevel && typeid(toplevel) == typeid(ASTDef*)) {
+		toplevel->codeGen(this);
+		delete toplevel;
 		return NULL;
 	} else {
-		inject_result = true;
-		ASTDef defn("tmp");
-		defn.body = ast;
-		Function* fn = static_cast<Function*>(defn.codeGen(this));
+		ASTForeignDef wrapper("replexpr");
+		wrapper.body = ast;
+		void* ptr = compile_def(&wrapper);
 		delete ast;
-		return jit->getPointerToFunction(fn);
+		return ptr;
 	}
+}
+
+void* JIT::compile_def(ASTForeignDef* defn) {
+	Function* fn = static_cast<Function*>(defn->codeGen(this));
+	return jit->getPointerToFunction(fn);
 }

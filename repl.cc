@@ -23,7 +23,7 @@ int main(int argc, const char* argv[]) {
 		getline(cin, expr);
 
 		if (expr.size() == 0) {
-			cout << "Exzhit." << endl;
+			cout << "Exiting." << endl;
 			return 0;
 		}
 

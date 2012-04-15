@@ -81,6 +81,15 @@ struct ASTDef : public ASTNode {
 		: name(_name)
 	{}
 
+	bool validateArgs();
+	virtual Value* codeGen(JIT* jit);
+};
+
+struct ASTForeignDef : public ASTDef {
+	ASTForeignDef(string _name)
+		: ASTDef(_name)
+	{}
+
 	virtual Value* codeGen(JIT* jit);
 };
 
@@ -131,7 +140,6 @@ public:
 struct JIT {
 	Module* mod;
 	IRBuilder<>* builder;
-	bool inject_result;
 	map<string, Value*> symbols;
 	Type* float_pod;
 	Type* float_ptr;
@@ -147,4 +155,5 @@ struct JIT {
 	JIT();
 	~JIT();
 	void* compile(string expr);
+	void* compile_def(ASTForeignDef* defn);
 };

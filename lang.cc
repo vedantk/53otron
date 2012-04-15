@@ -229,9 +229,6 @@ JIT::JIT() {
 }
 
 JIT::~JIT() {
-	if (builder) {
-		delete builder;
-	}
 	delete optimizer;
 	delete mod;
 }

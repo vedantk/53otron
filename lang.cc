@@ -82,7 +82,7 @@ ASTCall::~ASTCall() {
 }
 
 Value* ASTCall::codeGen(JIT* jit) {
-	if (args.size() < 2) {
+	if (args.size() == 0) {
 		return NULL;
 	}
 
@@ -92,7 +92,7 @@ Value* ASTCall::codeGen(JIT* jit) {
 		vals.push_back((*it)->codeGen(jit));
 	}
 
-	Value* ret;
+	Value* ret = NULL;
 
 	#define FUNC(_name, _llvmop) \
 		if (name == _name) { \
@@ -105,13 +105,37 @@ Value* ASTCall::codeGen(JIT* jit) {
 			return ret; \
 		} \
 
-	FUNC("+", FAdd);
-	FUNC("-", FSub);
-	FUNC("*", FMul);
-	FUNC("/", FDiv);
+	if (args.size() >= 2) {
+		FUNC("+", FAdd);
+		FUNC("-", FSub);
+		FUNC("*", FMul);
+		FUNC("/", FDiv);
+	}
 
-	return NULL;
 	#undef FUNC
+
+	#define SPECIAL_FUNC1(_name, _jvar) \
+	if (name == _name) { \
+		return jit->builder->CreateCall(_jvar, \
+			vals[0], ""); \
+	} \
+
+	if (args.size() == 1) {
+		SPECIAL_FUNC1("sqrt", jit->vsqrt);
+		SPECIAL_FUNC1("sin", jit->vsin);
+		SPECIAL_FUNC1("cos", jit->vcos);
+		SPECIAL_FUNC1("exp", jit->vexp);
+		SPECIAL_FUNC1("log", jit->vlog);
+	}
+
+	#undef SPECIAL_FUNC1
+
+	if (name == "pow" && args.size() == 2) {
+		return jit->builder->CreateCall2(jit->vpow,
+			vals[0], vals[1], "");
+	}
+
+	return ret;
 }
 
 Value* ASTVar::codeGen(JIT* jit) {
@@ -151,13 +175,11 @@ JIT::JIT() {
 
 	storeu = mod->getFunction("llvm.x86.sse.storeu.ps");
 	if (!storeu) {
-		VectorType* VectorTy_5 = VectorType::get(
-			Type::getFloatTy(mod->getContext()), 4);
 		PointerType* PointerTy_6 = PointerType::get(
 			IntegerType::get(mod->getContext(), 8), 0);
 		std::vector<Type*>FuncTy_8_args;
 		FuncTy_8_args.push_back(PointerTy_6);
-		FuncTy_8_args.push_back(VectorTy_5);
+		FuncTy_8_args.push_back(float_vec_const);
 		FunctionType* FuncTy_8 = FunctionType::get(
 			/*Result=*/Type::getVoidTy(mod->getContext()),
 			/*Params=*/FuncTy_8_args,
@@ -168,6 +190,33 @@ JIT::JIT() {
 			/*Name=*/"llvm.x86.sse.storeu.ps", mod); 
 		storeu->setCallingConv(CallingConv::C);
 	}
+
+	vector<Type*> func_proto(1, float_vec_const);
+	FunctionType* ftype_vec_vec = FunctionType::get(
+		float_vec_const, func_proto, false);
+
+	#define INTRIN_VEC_VEC(_var, _llvmop) { \
+		_var = mod->getFunction("llvm." _llvmop ".v4f32"); \
+		if (!_var) { \
+			_var = Function::Create( \
+				ftype_vec_vec, GlobalValue::ExternalLinkage, \
+				"llvm." _llvmop ".v4f32", mod); \
+			_var->setCallingConv(CallingConv::C); \
+		} \
+	} \
+
+	INTRIN_VEC_VEC(vsqrt, "sqrt");
+	INTRIN_VEC_VEC(vsin, "sin");
+	INTRIN_VEC_VEC(vcos, "cos");
+	INTRIN_VEC_VEC(vexp, "exp");
+	INTRIN_VEC_VEC(vlog, "log");
+
+	func_proto.push_back(float_vec_const);
+	ftype_vec_vec = FunctionType::get(
+		float_vec_const, func_proto, false);
+	INTRIN_VEC_VEC(vpow, "pow");
+
+	#undef INTRIN_VEC_VEC
 
 	optimizer = new FunctionPassManager(mod);
 	optimizer->add(new TargetData(*jit->getTargetData()));

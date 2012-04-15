@@ -126,6 +126,7 @@ struct JIT {
 	Type* void_ret;
 	PointerType* result_type;
 	Function* storeu;
+	Function *vsqrt, *vsin, *vcos, *vpow, *vexp, *vlog;
 	FunctionPassManager* optimizer;
 	ExecutionEngine* jit;
 

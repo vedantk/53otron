@@ -12,7 +12,7 @@ This lets it generate code that is faster than what clang or gcc can currently p
 
 That's possible because the functions you write are converted to operate on *vectors*, or collections of data. These vectors are processed in 128-bit SSE registers, which can increase your per-instruction throughput by a factor of 4.
 
-[muparser](muparser.sourceforge.net) is a similar project, but as far as I can tell, it only emits single-scalar instructions (like clang and gcc).
+[muparser](http://muparser.sourceforge.net) is a similar project, but as far as I can tell, it only emits single-scalar instructions (like clang and gcc).
 
 ### Examples
 

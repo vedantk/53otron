@@ -4,7 +4,7 @@
 
 #include "lang.hh"
 
-static bool isIdentLexeme(char c) {
+static bool isIdent(char c) {
 	return (c > ' ') && (c != '(') && (c != ')');
 }
 
@@ -25,11 +25,12 @@ token_t Lexer::getToken() {
 			++_pos;
 			return TOK_CLOSE;
 		} else if (cur > ' ') {
+			/* Store the last identifier. */
 			_lastToken = "";
 			_lastToken += cur;
 			for (_pos=_pos+1;
 				_pos < _buf.size()
-				&& isIdentLexeme(_buf[_pos]);
+				&& isIdent(_buf[_pos]);
 				++_pos)
 			{
 				_lastToken += _buf[_pos];
@@ -47,6 +48,10 @@ string Lexer::getTokenString() {
 void Lexer::putToken(token_t tok) {
 	_tok_q.push_back(tok);
 }
+
+Parser::Parser(string expr)
+	: _lex(Lexer(expr))
+{}
 
 ASTNode* Parser::parse() {
 	token_t cur = _lex.getToken();
@@ -75,7 +80,7 @@ ASTNode* Parser::parse() {
 			while ((probe = _lex.getToken()) && probe == TOK_IDENT)
 			{
 				string var = _lex.getTokenString();
-				if (var[0] < 'A' || var[0] > 'z') {
+				if (!isalpha(var[0])) {
 					delete defn;
 					return NULL;
 				}
@@ -149,6 +154,13 @@ Value* ASTDef::codeGen(JIT* jit) {
 	return fn;
 }
 
+ASTForeignDef::ASTForeignDef(ASTDef* def)
+	: ASTDef(def->name)
+{
+	params = def->params;
+	body = def->body;
+}
+
 Value* ASTForeignDef::codeGen(JIT* jit) {
 	if (!validateArgs()) {
 		return NULL;
@@ -166,7 +178,7 @@ Value* ASTForeignDef::codeGen(JIT* jit) {
 		name, fn);
 	jit->builder = new IRBuilder<>(blk);
 
-	/* Vectorize the function arguments. */ 
+	/* Create vectors out of the function arguments. */ 
 	Function::arg_iterator param = fn->arg_begin();
 	for (unsigned i=0; i < params.size(); ++i, ++param) {
 		string argname = params[i];
@@ -201,6 +213,7 @@ ASTCall::~ASTCall() {
 }
 
 Value* ASTCall::codeGen(JIT* jit) {
+	/* Generate code for all child nodes. */
 	vector<Value*> vals;
 	list<ASTNode*>::iterator it = args.begin();
 	for (; it != args.end(); ++it) {
@@ -211,6 +224,7 @@ Value* ASTCall::codeGen(JIT* jit) {
 
 	Value* ret = NULL;
 
+	/* Handle arithmetic. */
 	#define FUNC(_name, _llvmop) \
 		if (name == _name) { \
 			ret = jit->builder->Create ## _llvmop ( \
@@ -231,6 +245,7 @@ Value* ASTCall::codeGen(JIT* jit) {
 
 	#undef FUNC
 
+	/* Handle more advanced vector intrinsics. */
 	#define SPECIAL_FUNC(_name, _jvar) \
 	if (name == _name) { \
 		return jit->builder->CreateCall(_jvar, \
@@ -356,24 +371,84 @@ JIT::~JIT() {
 	delete mod;
 }
 
-void* JIT::compile(string expr) {
-	Lexer lex(expr);
-	ASTNode* ast = Parser(lex).parse();
-	ASTDef* toplevel = dynamic_cast<ASTDef*>(ast);
-	if (toplevel && typeid(toplevel) == typeid(ASTDef*)) {
-		toplevel->codeGen(this);
-		delete toplevel;
-		return NULL;
-	} else {
-		ASTForeignDef wrapper("replexpr");
-		wrapper.body = ast;
-		void* ptr = compile_def(&wrapper);
-		delete ast;
-		return ptr;
-	}
+JITMachine::JITMachine() {
+	jit = new JIT();
 }
 
-void* JIT::compile_def(ASTForeignDef* defn) {
-	Function* fn = static_cast<Function*>(defn->codeGen(this));
-	return jit->getPointerToFunction(fn);
+JITMachine::~JITMachine() {
+	delete jit;
+}
+
+void JITMachine::jit_internal(string expr) {
+	ASTNode* ast = Parser(expr).parse();
+	if (!ast) return;
+	jit_internal_ast(ast);
+}
+
+void JITMachine::jit_internal_ast(ASTNode* ast) {
+	ASTDef* toplevel = dynamic_cast<ASTDef*>(ast);
+	if (toplevel && typeid(toplevel) == typeid(ASTDef*)) {
+		toplevel->codeGen(jit);
+	}
+	delete ast;
+}
+
+void* JITMachine::jit_external(string defn) {
+	ASTNode* ast = Parser(defn).parse();
+	if (!ast) return NULL;
+	return jit_external_ast(ast);
+}
+
+void* JITMachine::jit_external_ast(ASTNode* ast) {
+	void* func = NULL;
+	ASTDef* toplevel = dynamic_cast<ASTDef*>(ast);
+	if (toplevel && typeid(toplevel) == typeid(ASTDef*)) {
+		ASTForeignDef fdef(toplevel);
+		Value* val = fdef.codeGen(jit);
+		if (!val) {
+			goto done;
+		}
+		Function* fn = static_cast<Function*>(val);
+		func = jit->jit->getPointerToFunction(fn);
+	}
+
+done:
+	delete ast;
+	return func;
+}
+
+void* JITMachine::jit_external_expr(string expr, vector<string> params) {
+	ASTNode* ast = Parser(expr).parse();
+	if (!ast) return NULL;
+	return jit_external_expr_ast(ast, params);
+}
+
+void* JITMachine::jit_external_expr_ast(ASTNode* ast, vector<string> params) {
+	void* func = NULL;
+	ASTForeignDef wrapper("externalexpr");
+	wrapper.body = ast;
+	wrapper.params = params;
+	Value* val = wrapper.codeGen(jit);
+	if (!val) {
+		goto done;
+	} else {
+		Function* fn = static_cast<Function*>(val);
+		func = jit->jit->getPointerToFunction(fn);
+	}	
+
+done:
+	delete ast;
+	return func;
+}
+
+void* JITMachine::jit_repl_expr(string expr) {
+	ASTNode* ast = Parser(expr).parse();
+	ASTDef* toplevel = dynamic_cast<ASTDef*>(ast);
+	if (toplevel && typeid(toplevel) == typeid(ASTDef*)) {
+		jit_internal_ast(toplevel);
+		return NULL;
+	} else {
+		vector<string> params;
+		return jit_external_expr_ast(ast, params);
+	}
 }

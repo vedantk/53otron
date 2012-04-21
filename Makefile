@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Os `llvm-config --cxxflags` 
+CXXFLAGS = -Wall -Wextra `llvm-config --cxxflags` -Os
 LDFLAGS = `llvm-config --ldflags --libs jit` -lLLVM-3.0
 
 all: lang.o repl

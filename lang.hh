@@ -10,7 +10,7 @@
 #include <string>
 #include <typeinfo>
 #include <cstdlib>
-
+#include <ctype.h>
 #include <iostream>
 
 #include <llvm/LLVMContext.h>
@@ -34,7 +34,8 @@
 #include <llvm/Target/TargetData.h>
 #include <llvm/Support/TargetSelect.h>
 
-using namespace std;
+#include "jit.hh"
+
 using namespace llvm;
 
 enum token_t {
@@ -85,6 +86,7 @@ struct ASTForeignDef : public ASTDef {
 		: ASTDef(_name)
 	{}
 
+	ASTForeignDef(ASTDef* def);
 	virtual Value* codeGen(JIT* jit);
 };
 
@@ -124,10 +126,7 @@ class Parser {
 	Lexer _lex;
 
 public:
-	Parser(Lexer lex)
-		: _lex(lex)
-	{}
-
+	Parser(string expr);
 	~Parser() {};
 	ASTNode* parse();
 };
@@ -149,6 +148,5 @@ struct JIT {
 
 	JIT();
 	~JIT();
-	void* compile(string expr);
-	void* compile_def(ASTForeignDef* defn);
+	void* compile(ASTNode* ast);
 };

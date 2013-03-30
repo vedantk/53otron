@@ -357,7 +357,7 @@ JIT::JIT() {
 	#undef INTRIN_VEC_VEC
 
 	optimizer = new FunctionPassManager(mod);
-	optimizer->add(new TargetData(*jit->getTargetData()));
+	// optimizer->add(new TargetData(*jit->getTargetData()));
 	optimizer->add(createBasicAliasAnalysisPass());
 	optimizer->add(createInstructionCombiningPass());
 	optimizer->add(createReassociatePass());

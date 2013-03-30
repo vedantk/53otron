@@ -10,14 +10,19 @@ typedef void (*custom_func)(float*, float*, float*);
 static string get_expr() {
 	cout << "> ";
 	string expr;
+	int opened = 0;
 	while (true) {
 		string chunk;
 		getline(cin, chunk);
-		if (chunk[chunk.size() - 1] == '\\') {
-			chunk[chunk.size() - 1] = ' ';
-			expr += chunk;
-		} else {
-			expr += chunk;
+		for (size_t i=0; i < chunk.size(); ++i) {
+			if (chunk[i] == '(') {
+				++opened;
+			} else if (chunk[i] == ')') {
+				--opened;
+			}
+		}
+		expr += chunk;
+		if (opened == 0) {
 			return expr;
 		}
 	}

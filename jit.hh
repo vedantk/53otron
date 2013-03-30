@@ -37,4 +37,3 @@ private:
 	void* jit_external_ast(ASTNode* ast);
 	void* jit_external_expr_ast(ASTNode* ast, vector<string> params);
 };
-

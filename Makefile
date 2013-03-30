@@ -1,8 +1,9 @@
-CXX = g++
-CXXFLAGS = -Wall -Wextra `llvm-config --cxxflags` -Os
-LDFLAGS = `llvm-config --ldflags --libs jit` -lLLVM-3.0
+CXX = clang++
+CXXFLAGS = -Wall -Wextra -O2 `llvm-config --cxxflags` -I/usr/include/llvm
+LDFLAGS = `llvm-config --ldflags --libs jit` -lLLVM-3.2
 
-all: lang.o repl
-
-lang.o: lang.cc
 repl: repl.cc lang.o
+lang.o: lang.cc
+
+clean:
+	rm -rf lang.o repl

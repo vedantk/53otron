@@ -25,13 +25,13 @@
 #include <llvm/PassManager.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Assembly/PrintModulePass.h>
-#include <llvm/Support/IRBuilder.h>
+#include <llvm/IRBuilder.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JIT.h>
-#include <llvm/Target/TargetData.h>
+// #include <llvm/Target/TargetData.h>
 #include <llvm/Support/TargetSelect.h>
 
 #include "jit.hh"

@@ -45,8 +45,6 @@ int main(int argc, const char* argv[]) {
 
 	JITMachine machine;
 
-	cout << "Herro! Dis simd-lisp repl." << endl;
-
 	while (true) {
 		string expr = get_expr();
 

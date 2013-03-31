@@ -31,7 +31,6 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JIT.h>
-// #include <llvm/Target/TargetData.h>
 #include <llvm/Support/TargetSelect.h>
 
 #include "jit.hh"

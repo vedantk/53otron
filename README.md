@@ -1,23 +1,28 @@
-This is an embeddable just-in-time compiler for math. 
+### 53otron
 
-I built it for fun at the recent Berkeley vs. Stanford hackathon, where it was pretty well received. 
+_53otron_ is supposed to be an interactive surface visualizer inspired by
+some of the concepts from Berkeley's multivariate calculus course (Math 53).
 
-It uses LLVM for code generation. Everything else was written from scratch.
+53otron will have to parse and evaluate a lot of mathematical expressions. To
+make that convenient and fast, I cobbled together an auto-vectorizing JIT
+compiler using [LLVM](http://llvm.org/) and Intel's packed-struct
+[SIMD](http://en.wikipedia.org/wiki/Simd) instructions. Its output performs
+pretty favorably when compared to the best assembly clang and gcc can produce
+(at -O3 -ftree-vectorize). And the language itself looks like Scheme :-).
 
-### Vectorization
+([muparser](http://muparser.sourceforge.net) is a similar project, but as far
+as I can tell, it only emits single-scalar instructions (like clang and gcc).)
 
-The compiler makes exclusive use of Intel's fast packed-struct (or [SIMD](http://en.wikipedia.org/wiki/Simd)) instructions.
+I'm only getting around to working on the graphics aspect of this project now.
 
-This lets it generate code that is faster than what clang or gcc can currently produce, even at the highest optimization levels.
+### To Do
 
-That's possible because the functions you write are converted to operate on *vectors*, or collections of data. These vectors are processed in 128-bit SSE registers, which can increase your per-instruction throughput by a factor of 4.
+- All the graphics.
+- Take advantage of AVX instructions if possible.
 
-[muparser](http://muparser.sourceforge.net) is a similar project, but as far as I can tell, it only emits single-scalar instructions (like clang and gcc).
-
-### Examples
+### The _expr_ REPL
 
 	$ ./repl
-	Herro! Dis simd-lisp repl.
 	> 1
 	<1, 1, 1, 1>
 	> (def tan (x) (/ (sin x) (cos x)))
@@ -62,5 +67,3 @@ That's possible because the functions you write are converted to operate on *vec
 	x = <0.25, 0.75, 1.25, 1.75>
 	y = <1, 2, 4.5, 11.5>
 	Result = <0.0638355, 0.524023, 8.21485, -3442.76>
-
-If you want to figure out how to embed this compiler, check out the 'magic' function at the end of [repl.cc](https://github.com/vedantk/53otron/blob/master/repl.cc).

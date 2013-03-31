@@ -1,4 +1,4 @@
 *.o
-repl
-test/
+expr/repl
+view/main
 tags

@@ -1,14 +1,15 @@
 ### 53otron
 
 _53otron_ is supposed to be an interactive surface visualizer inspired by
-some of the concepts from Berkeley's multivariate calculus course (Math 53).
+Berkeley's multivariate calculus course.
 
 53otron will have to parse and evaluate a lot of mathematical expressions. To
 make that convenient and fast, I cobbled together an auto-vectorizing JIT
-compiler using [LLVM](http://llvm.org/) and Intel's packed-struct
-[SIMD](http://en.wikipedia.org/wiki/Simd) instructions. Its output performs
-pretty favorably when compared to the best assembly clang and gcc can produce
-(at -O3 -ftree-vectorize). And the language itself looks like Scheme :-).
+compiler using [LLVM](http://llvm.org/). It's cool because it uses
+packed-struct [SIMD](http://en.wikipedia.org/wiki/Simd) instructions. Its
+output performs pretty favorably when compared to the best assembly clang and
+gcc can produce (at -O3 -ftree-vectorize). And the language itself looks like
+Scheme :-).
 
 ([muparser](http://muparser.sourceforge.net) is a similar project, but as far
 as I can tell, it only emits single-scalar instructions (like clang and gcc).)

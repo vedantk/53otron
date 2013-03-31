@@ -31,7 +31,6 @@ I'm only getting around to working on the graphics aspect of this project now.
 	<2.87427, 2.87427, 2.87427, 2.87427>
 
 	$ ./repl -emit
-	Herro! Dis simd-lisp repl.
 	>
 	Exiting.
 	; ModuleID = 'jit'

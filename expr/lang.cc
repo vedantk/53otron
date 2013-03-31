@@ -92,7 +92,7 @@ ASTNode* Parser::parse() {
 				return NULL;
 			}
 			defn->body = parse();
-			if (_lex.getToken() != TOK_CLOSE) {
+			if (!defn->body || _lex.getToken() != TOK_CLOSE) {
 				delete defn;
 				return NULL;
 			}

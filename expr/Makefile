@@ -6,4 +6,4 @@ repl: repl.cc lang.o
 lang.o: lang.cc
 
 clean:
-	rm -rf lang.o repl
+	rm -f lang.o repl

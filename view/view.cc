@@ -35,61 +35,33 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     static float step = 0.0;
-    static const float incr = 0.05;
+    static const float incr = 1.5;
 
-    glColor3f(1, 0, 0);
-    glBegin(GL_TRIANGLES);
-        glVertex3f(-.5, 0, -2);
-        glVertex3f(.5, 0, -2);
-        glVertex3f(0, 1, -2);
-    glEnd();
-
-    glColor3f(0, 0, 1);
-    glBegin(GL_TRIANGLES);
-        glVertex3f(-.5, 0, -2.15);
-        glVertex3f(.5, 0, -2.15);
-        glVertex3f(0, 1, -2.15);
-    glEnd();
+    Point3f delta1(2 * sin(step / 50), cos(step/50), 0);
 
     Mesh mesh;
     BezierPatch patch1;
-    patch1.addUCurve(Point3f(1.400, 0.000, -2.400),
+    patch1.addUCurve(delta1 + Point3f(1.400, 0.000, -2.400),
                      Point3f(1.400, -0.784,- 2.400),
                      Point3f(0.784, -1.400,- 2.400),
-                     Point3f(0.000, -1.400,- 2.400));
-    patch1.addUCurve(Point3f(1.337, 0.000, -2.531),
+                     delta1 + Point3f(0.000, -1.400,- 2.400));
+    patch1.addUCurve(delta1 + Point3f(1.337, 0.000, -2.531),
                      Point3f(1.337, -0.749,- 2.531),
                      Point3f(0.749, -1.337,- 2.531),
-                     Point3f(0.000, -1.337,- 2.531));
-    patch1.addUCurve(Point3f(1.438, 0.000, -2.531),
+                     delta1 + Point3f(0.000, -1.337,- 2.531));
+    patch1.addUCurve(delta1 + Point3f(1.438, 0.000, -2.531),
                      Point3f(1.438, -0.805,- 2.531),
                      Point3f(0.805, -1.438,- 2.531),
-                     Point3f(0.000, -1.438,- 2.531));
-    patch1.addUCurve(Point3f(1.500, 0.000, -2.400),
+                     delta1 + Point3f(0.000, -1.438,- 2.531));
+    patch1.addUCurve(delta1 + Point3f(1.500, 0.000, -2.400),
                      Point3f(1.500, -0.840,- 2.400),
                      Point3f(0.840, -1.500,- 2.400),
-                     Point3f(0.000, -1.500,- 2.400));
-    BezierPatch patch2;
-    patch2.addUCurve(Point3f(0.00, 0.00,  0.00),
-                     Point3f(0.33,  0.00,  0.00),
-                     Point3f(0.66, 0.00, 0.00),
-                     Point3f(1.00, 0.00, 0.00));
-    patch2.addUCurve(Point3f(0.00, 0.33, 0.00),
-                     Point3f(0.33, 0.33, 0.00),
-                     Point3f(0.66, 0.33, 0.00),
-                     Point3f(1.00,  0.33, 0.00));
-    patch2.addUCurve(Point3f(0.00, 0.66, 0.00),
-                     Point3f(0.33, 0.66, 0.00),
-                     Point3f(0.66, 0.66, 0.00),
-                     Point3f(1.00, 0.66, 0.00));
-    patch2.addUCurve(Point3f(0.00, 1.00, 0.00),
-                     Point3f(0.33, 1.00, 0.00),
-                     Point3f(0.66, 1.00, 0.00),
-                     Point3f(1.00, 1.00, 0.00));
+                     delta1 + Point3f(0.000, -1.500,- 2.400));
 
     draw(&mesh, &patch1);
-    draw(&mesh, &patch2);
     mesh.render(&color);
+
+    step += incr;
 
     glFlush();
     glutSwapBuffers();
@@ -132,7 +104,7 @@ void init_scene()
 
 static void keyboard(unsigned char key, int x, int y)
 {
-    const float step = 0.03;
+    const float step = 0.05;
     switch (key) {
     case 'q':
         exit(0);
@@ -179,10 +151,8 @@ static void keyboard(unsigned char key, int x, int y)
         break;
     }
 
-    cout << "Key = " << key << "\n";
-    print_vec3("eye", color.eye);
-    cout << endl;
-    print_vec3("lookat", lookat);
+    print_vec3("> eye", color.eye);
+    print_vec3("\tlookat", lookat);
     cout << endl;
 }
 

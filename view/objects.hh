@@ -100,9 +100,6 @@ public:
     void addParametricRectangle(FloatPair ll, FloatPair lr,
                                 FloatPair ul, FloatPair ur);
 
-    /* Low-fidelity transformation, may cause cracking effects. */
-    void applyTransform(Matrix4f& transform);
-
     void render(ColorModel* color);
 
     /* Empty the triangle buffer. */

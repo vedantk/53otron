@@ -121,14 +121,6 @@ void Mesh::addParametricRectangle(FloatPair ll, FloatPair lr,
     addParametricTriangle(ll, ul, ur);
 }
 
-void Mesh::applyTransform(Matrix4f& transform)
-{
-    for (size_t i=0; i < vertices.size(); ++i) {
-        vertices[i].first = dehomogenize(transform *
-                                         homogenize(vertices[i].first, true));
-    }
-}
-
 void Mesh::render(ColorModel* color)
 {
     for (size_t i=0; i < indices.size(); ++i) {
@@ -150,6 +142,12 @@ void Mesh::render(ColorModel* color)
         glvtx3f(p3);
         glEnd();
     }
+}
+
+void Mesh::clear()
+{
+    vertices.clear();
+    indices.clear();
 }
 
 void draw(Mesh* mesh, ParametricSurface* surface)

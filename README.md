@@ -9,7 +9,7 @@ compiler using [LLVM](http://llvm.org/). It's cool because it uses
 packed-struct [SIMD](http://en.wikipedia.org/wiki/Simd) instructions. Its
 output performs pretty favorably when compared to the best assembly clang and
 gcc can produce (at -O3 -ftree-vectorize). And the language itself looks like
-Scheme :-).
+Scheme!
 
 ([muparser](http://muparser.sourceforge.net) is a similar project, but as far
 as I can tell, it only emits single-scalar instructions (like clang and gcc).)
@@ -31,7 +31,6 @@ I'm only getting around to working on the graphics aspect of this project now.
 	<2.87427, 2.87427, 2.87427, 2.87427>
 
 	$ ./repl -emit
-	Herro! Dis simd-lisp repl.
 	>
 	Exiting.
 	; ModuleID = 'jit'

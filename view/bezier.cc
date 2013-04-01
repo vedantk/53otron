@@ -1,32 +1,30 @@
 /*
  * bezier.cc
+ *
+ * Achal Dave, Vedant Kumar
  */
 
 #include "objects.hh"
 
 BezierPatch::BezierPatch()
-    : rowcount(0)
+    : count(0)
 {}
 
 BezierPatch::~BezierPatch() {}
 
 void BezierPatch::addUCurve(Point3f p1, Point3f p2, Point3f p3, Point3f p4)
 {
-    if (rowcount == 4) {
-        return;
-    }
+    assert(count < 16);
 
-    ucurves[rowcount][0] = p1;
-    ucurves[rowcount][1] = p2;
-    ucurves[rowcount][2] = p3;
-    ucurves[rowcount][3] = p4;
+    ucurves[count++] = p1;
+    ucurves[count++] = p2;
+    ucurves[count++] = p3;
+    ucurves[count++] = p4;
 
-    ++rowcount;
-
-    if (rowcount == 4) {
+    if (count == 16) {
         for (int i=0; i < 4; ++i) {
             for (int j=0; j < 4; ++j) {
-                vcurves[i][j] = ucurves[j][i];
+                vcurves[j*4+i] = ucurves[i*4+j];
             }
         }
     }
@@ -55,13 +53,11 @@ Vec3fPair BezierPatch::eval(FloatPair pt)
     Point3f ucurve[4];
     Point3f vcurve[4];
     for (int i=0; i < 4; ++i) {
-        ucurve[i] = curveInterpolate((Point3f*) &ucurves[i], pt.first).first;
-        vcurve[i] = curveInterpolate((Point3f*) &vcurves[i], pt.second).first;
+        vcurve[i] = curveInterpolate(&vcurves[4*i], pt.first).first;
+        ucurve[i] = curveInterpolate(&ucurves[4*i], pt.second).first;
     }
     Vec3fPair p_dpdu = curveInterpolate((Point3f*) &ucurve, pt.first);
     Vec3fPair p_dpdv = curveInterpolate((Point3f*) &vcurve, pt.second);
     Vector3f normal = p_dpdu.second.cross(p_dpdv.second).normalized();
     return make_pair(p_dpdv.first, normal);
 }
-
-

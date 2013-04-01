@@ -8,7 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/time.h>
+#include <assert.h>
 
 #include <string>
 #include <vector>
@@ -29,6 +31,20 @@ typedef Vector3i Point3i;
 typedef Vector3f Color3f;
 typedef pair<float, float> FloatPair;
 typedef pair<Vector3f, Vector3f> Vec3fPair;
+
+inline float fsign(float v0)
+{
+    if (v0 >= 0) {
+        return 1.0;
+    } else {
+        return -1.0;
+    }
+}
+
+inline bool fequal(float lhs, float rhs)
+{
+    return fabs(lhs - rhs) < 0.001;
+}
 
 inline FloatPair addfp(FloatPair lhs, FloatPair rhs)
 {
@@ -77,6 +93,13 @@ inline float clamp(float v0, float min0, float max0)
     return v0;
 }
 
+inline Vector3f clampv(Vector3f v0, float min0, float max0)
+{
+    return Vector3f(clamp(v0(0), min0, max0),
+                    clamp(v0(1), min0, max0),
+                    clamp(v0(2), min0, max0));
+}
+
 inline Vector4f homogenize(Vector3f v, bool location)
 {
     return Vector4f(v(0), v(1), v(2), float(int(location)));
@@ -90,7 +113,7 @@ inline Vector3f dehomogenize(Vector4f v)
 inline void print_vec3(string name, Vector3f& vec)
 {
     cout << name << ": "
-         << "<" << vec(0) << ", " << vec(1) << "," << vec(2) << ">";
+         << "<" << vec(0) << ", " << vec(1) << ", " << vec(2) << ">";
 }
 
 template<typename T>
@@ -129,7 +152,7 @@ public:
 
     float rand()
     {
-        /* Returns values in the range [0.0, 1.0). */
+        /* Returns values in the range [0.0, 1.0). Let the overflow happen. */
         return arr[cur++ % size];
     }
 };

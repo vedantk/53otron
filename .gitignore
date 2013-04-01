@@ -1,4 +1,4 @@
 *.o
 expr/repl
-view/main
+view/view
 tags

@@ -9,8 +9,8 @@
 class Light {
 public:
     enum {
-        LIGHT_POINT,
-        LIGHT_DIRECTIONAL,
+        POINT,
+        DIRECTIONAL,
     };
 
     Light(int _type, Color3f _color, Vector3f _dir);
@@ -19,29 +19,29 @@ public:
     Vector3f getIncident(Point3f pt) const;
 
     Color3f color;
+    Vector3f dir;
 
 private:
     int type;
-    Vector3f dir;
 };
 
 class ColorModel {
 public:
     ColorModel(bool _fill, float sp,
-               Color3f& ka, Color3f& ks, Color3f& kd,
-               Point3f& _eye, const vector<Light>& _lights);
+               Color3f ka, Color3f ks, Color3f kd,
+               Point3f _eye, const vector<Light>& _lights);
 
-    bool doFill();
     Color3f getColor(Vec3fPair& loc);
 
-private:
     bool fill;
+    Point3f eye;
+    const vector<Light>& lights;
+
+private:
     float spower;
     Color3f ambient;
     Color3f specular;
     Color3f diffuse;
-    const vector<Light>& lights;
-    Point3f eye;
 };
 
 class ParametricSurface {
@@ -58,12 +58,12 @@ public:
     /* Compute the point and gradient of the surface at the given (u, v). */
     virtual Vec3fPair eval(FloatPair pt) = 0;
 
-    static bool tolerable(Point3f& approx, Point3f& expected);
-
+    /* Determine whether a surface approximation is good enough or not. */
     static constexpr float errorTolerance = 0.01;
+    static bool tolerable(Point3f& approx, Point3f& expected);
 };
 
-class BezierPatch : ParametricSurface {
+class BezierPatch : public ParametricSurface {
 public:
     BezierPatch();
     ~BezierPatch();
@@ -77,15 +77,15 @@ public:
     Vec3fPair eval(FloatPair pt);
 
 private:
-    int rowcount;
-    Point3f ucurves[4][4];
-    Point3f vcurves[4][4];
+    int count;
+    Point3f ucurves[16];
+    Point3f vcurves[16];
 };
 
-class TessellationMesh {
+class Mesh {
 public:
-    TessellationMesh();
-    ~TessellationMesh();
+    Mesh();
+    ~Mesh();
 
     /* Raw methods, no tessellation performed. */
     void addTriangle(Vec3fPair p1, Vec3fPair p2, Vec3fPair p3);
@@ -104,6 +104,8 @@ public:
     void applyTransform(Matrix4f& transform);
 
     void render(ColorModel* color);
+
+    /* Empty the triangle buffer. */
     void clear();
 
 private:
@@ -113,4 +115,4 @@ private:
 };
 
 /* Assemble a [0..1], [0..1] u/v parameterization. */
-void draw(TessellationMesh* mesh, ParametricSurface* surface);
+void draw(Mesh* mesh, ParametricSurface* surface);

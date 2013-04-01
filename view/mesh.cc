@@ -1,5 +1,7 @@
 /*
  * mesh.cc
+ *
+ * Vedant Kumar
  */
 
 #include "objects.hh"
@@ -13,13 +15,13 @@ bool ParametricSurface::tolerable(Point3f& approx, Point3f& expected)
     return (expected - approx).norm() < errorTolerance;
 }
 
-TessellationMesh::TessellationMesh()
+Mesh::Mesh()
     : surf(NULL)
 {}
 
-TessellationMesh::~TessellationMesh() {}
+Mesh::~Mesh() {}
 
-void TessellationMesh::addTriangle(Vec3fPair p1, Vec3fPair p2, Vec3fPair p3)
+void Mesh::addTriangle(Vec3fPair p1, Vec3fPair p2, Vec3fPair p3)
 {
     size_t base = indices.size();
     indices.push_back(Vector3i(base, base+1, base+2));
@@ -28,30 +30,28 @@ void TessellationMesh::addTriangle(Vec3fPair p1, Vec3fPair p2, Vec3fPair p3)
     vertices.push_back(p3);
 }
 
-void TessellationMesh::addRectangle(Vec3fPair ll, Vec3fPair lr,
-                                    Vec3fPair ul, Vec3fPair ur)
+void Mesh::addRectangle(Vec3fPair ll, Vec3fPair lr,
+                        Vec3fPair ul, Vec3fPair ur)
 {
     addTriangle(ll, lr, ur);
     addTriangle(ll, ul, ur);
 }
 
-void TessellationMesh::setParametricSurface(ParametricSurface* surface)
+void Mesh::setParametricSurface(ParametricSurface* surface)
 {
     surf = surface;
 }
 
-void TessellationMesh::addParametricTriangle(FloatPair p1,
-                                             FloatPair p2,
-                                             FloatPair p3)
+void Mesh::addParametricTriangle(FloatPair p1, FloatPair p2, FloatPair p3)
 {
     addParametricTriangle(surf->eval(p1), p1,
                           surf->eval(p2), p2,
                           surf->eval(p3), p3);
 }
 
-void TessellationMesh::addParametricTriangle(Vec3fPair x1, FloatPair p1,
-                                             Vec3fPair x2, FloatPair p2,
-                                             Vec3fPair x3, FloatPair p3)
+void Mesh::addParametricTriangle(Vec3fPair x1, FloatPair p1,
+                                 Vec3fPair x2, FloatPair p2,
+                                 Vec3fPair x3, FloatPair p3)
 {
     Point3f xm12 = 0.5 * (x1.first + x2.first);
     Point3f xm13 = 0.5 * (x1.first + x3.first);
@@ -114,14 +114,14 @@ void TessellationMesh::addParametricTriangle(Vec3fPair x1, FloatPair p1,
 #undef P
 }
 
-void TessellationMesh::addParametricRectangle(FloatPair ll, FloatPair lr,
-                                              FloatPair ul, FloatPair ur)
+void Mesh::addParametricRectangle(FloatPair ll, FloatPair lr,
+                                  FloatPair ul, FloatPair ur)
 {
     addParametricTriangle(ll, lr, ur);
     addParametricTriangle(ll, ul, ur);
 }
 
-void TessellationMesh::applyTransform(Matrix4f& transform)
+void Mesh::applyTransform(Matrix4f& transform)
 {
     for (size_t i=0; i < vertices.size(); ++i) {
         vertices[i].first = dehomogenize(transform *
@@ -129,7 +129,7 @@ void TessellationMesh::applyTransform(Matrix4f& transform)
     }
 }
 
-void TessellationMesh::render(ColorModel* color)
+void Mesh::render(ColorModel* color)
 {
     for (size_t i=0; i < indices.size(); ++i) {
         Vector3i idx = indices[i];
@@ -137,9 +137,10 @@ void TessellationMesh::render(ColorModel* color)
         Point3f p2 = vertices[idx(1)].first;
         Point3f p3 = vertices[idx(2)].first;
 
-        glcol3f(color->getColor(x1));
+        Color3f shade = color->getColor(x1);
+        glcol3f(shade);
 
-        if (color->doFill())
+        if (color->fill)
             glBegin(GL_TRIANGLES);
         else
             glBegin(GL_LINE_LOOP);
@@ -151,7 +152,7 @@ void TessellationMesh::render(ColorModel* color)
     }
 }
 
-void draw(TessellationMesh* mesh, ParametricSurface* surface)
+void draw(Mesh* mesh, ParametricSurface* surface)
 {
     static const float epsilon = 0.001;
     static const float stepSize = 0.01;

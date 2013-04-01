@@ -5,19 +5,11 @@ LDFLAGS = -lglut -lm -lstdc++ -lGL -lGLU
 
 OBJECTS = $(patsubst %.cc, %.o, $(wildcard *.cc))
 
-#%.o: %.cc
-#	$(CXX) $(CXXFLAGS) -c $^
-#	grep -xq "$@" .gitignore || echo $@ >> .gitignore
-
 .PHONY: all
-all: $(OBJECTS) main
+all: $(OBJECTS) view
 
-main: $(OBJECTS)
-
-#main: $(OBJECTS)
-#	$(CXX) $(LDFLAGS) $^ -o $@
-#	grep -xq "$@" .gitignore || echo $@ >> .gitignore
+view: $(OBJECTS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJECTS) main
+	rm -f $(OBJECTS) view
